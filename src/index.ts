@@ -1,254 +1,170 @@
-import puppeteer from "puppeteer";
 import fs from "fs/promises";
-import { errToObj, sleep } from "./util.js";
-import { ErrorObj } from "./type.js";
+import puppeteer from "puppeteer";
+import { Job } from "./interface.js";
+import jobProperties from "./job-properties.js";
 
-(async () => {
-  // Launch a new browser instance
+const positions = ["software engineer"];
+const numOfPage = 1; // Number of pages opened at the same time
+const numOfIteration = 1; // Number of iterations
 
-  // Create an array to store the jobs
-  const jobs: any[] = [];
+const browser = await puppeteer.launch({ headless: false });
 
-  // Create an array to store the errors
-  const errors: ErrorObj[] = [];
+const getJobs = async (
+  position: string,
+  indeedPage: number
+): Promise<Job[]> => {
+  console.log(`Getting jobs for ${position} on page ${indeedPage}...`);
 
-  const browser = await puppeteer.launch({ headless: false });
+  const positionSlug = position.split(" ").join("+");
 
-  // Create a new page
   const page = await browser.newPage();
-  // Set the user agent and http headers
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36"
+  const url = `https://ca.indeed.com/jobs?q=${positionSlug}&start=${indeedPage}`;
+  console.log(url);
+
+  await page
+    .goto(url, {
+      waitUntil: "networkidle0"
+    })
+    .catch((err) => {
+      console.log(`Error: Fail to load page ${indeedPage} for ${position}`);
+    });
+
+  const jks = await page.evaluate(() => {
+    const jobElements = document.querySelectorAll("*[data-jk]");
+    return [...jobElements].map((jobElement) =>
+      jobElement.getAttribute("data-jk")
+    );
+  });
+
+  console.log(`Found ${jks.length} jobs: ${jks.join(", ")}`);
+
+  const jobs = [];
+  const errors: any = [];
+  for (const jk of jks) {
+    await page.goto(`https://ca.indeed.com/viewjob?jk=${jk}`, {
+      waitUntil: "networkidle0"
+    });
+    const job: Job = {
+      title: "",
+      company: "",
+      salary: "",
+      location: "",
+      reviews: "",
+      stars: "",
+      jobType: [],
+      jobDescription: "",
+      jobActivity: []
+    };
+    for (const jobProperty of jobProperties) {
+      if (jobProperty.number === "single") {
+        let jobPropertyElement: string;
+        if (jobProperty.type === "attribute" && jobProperty.attribute) {
+          jobPropertyElement =
+            (await page
+              .evaluate(
+                (selector: string, attribute: string) => {
+                  const el = document.querySelector(selector);
+                  return el?.getAttribute(attribute) || "";
+                },
+                jobProperty.selector,
+                jobProperty.attribute
+              )
+              .catch((err) => {
+                console.log(
+                  `Error: Fail to find ${jobProperty.name} for job ${jk}`
+                );
+                errors.push({
+                  job: jk,
+                  property: jobProperty.name
+                });
+              })) || "";
+        } else {
+          jobPropertyElement =
+            (await page
+              .$eval(jobProperty.selector, (el) => el?.textContent?.trim())
+              .catch((err) => {
+                console.log(
+                  `Error: Fail to find ${jobProperty.name} for job ${jk}`
+                );
+                errors.push({
+                  job: jk,
+                  property: jobProperty.name
+                });
+              })) || "";
+        }
+
+        if (jobPropertyElement) job[jobProperty.key] = jobPropertyElement;
+      } else if (jobProperty.number === "multiple") {
+        let jobPropertyElements: Array<string>;
+        if (jobProperty.type === "attribute" && jobProperty.attribute) {
+          jobPropertyElements =
+            (await page
+              .evaluate(
+                (selector: string, attribute: string) => {
+                  const els = document.querySelectorAll(selector);
+                  return [...els].map(
+                    (el) => el?.getAttribute(attribute) || ""
+                  );
+                },
+                jobProperty.selector,
+                jobProperty.attribute
+              )
+              .catch((err) => {
+                console.log(
+                  `Error: Fail to find ${jobProperty.name} for job ${jk}`
+                );
+                errors.push({
+                  job: jk,
+                  property: jobProperty.name
+                });
+              })) || [];
+        } else {
+          jobPropertyElements =
+            (await page
+              .$$eval(jobProperty.selector, (els) =>
+                els
+                  .map((el) => el?.textContent?.trim() || "")
+                  .filter((itm) => itm !== "")
+              )
+              .catch((err) => {
+                console.log(
+                  `Error: Fail to find ${jobProperty.name} for job ${jk}`
+                );
+                errors.push({
+                  job: jk,
+                  property: jobProperty.name
+                });
+              })) || [];
+        }
+
+        if (jobPropertyElements) job[jobProperty.key] = jobPropertyElements;
+      }
+    }
+    jobs.push(job);
+  }
+
+  await fs.writeFile(
+    `./output/jobs/${positionSlug}-${indeedPage}.json`,
+    JSON.stringify(jobs, null, 2)
   );
-  await page.setExtraHTTPHeaders({
-    "Accept-Language": "en-US,en;q=0.9"
-  });
+  await fs.writeFile(
+    `${positionSlug}-${indeedPage}errors.json`,
+    JSON.stringify(errors, null, 2)
+  );
+  return jobs;
+};
 
-  // Navigate to a webpage
-  await page.goto("https://ca.indeed.com/jobs?q=software+engineer", {
-    waitUntil: "networkidle0"
-  });
+const arr = new Array(numOfPage).fill(0).map((_, i) => i * 10);
+const arr2 = new Array(numOfIteration).fill(0).map((_, i) => i);
 
-  // Select all job card elements
-  const scrapeJobs = async (pageCount: number) => {
-    if (pageCount > 1) return;
-    console.log("Page count: ", pageCount);
-    console.log(page.url());
-
-    let popUpClose = await page.$(
-      "#mosaic-modal-mosaic-provider-desktopserp-jobalert-popup > div > div > div.icl-Modal > div > button"
+for (const position of positions) {
+  for await (const j of arr2) {
+    await Promise.all(
+      arr.map(async (i) => {
+        await getJobs(position, i + numOfPage * 10 * j);
+      })
     );
-    await popUpClose?.click().catch((err) => {
-      errors.push(errToObj(err));
-      console.log(err);
-    });
+  }
+}
 
-    let liElements = await page.$$("#mosaic-provider-jobcards > ul > li");
-
-    if (liElements.length === 0) {
-      throw new Error("No li elements found");
-    }
-    const jobSet = new Set();
-    for (let i = 0; i < liElements.length; i++) {
-      // Get the clickable element
-      const clickable = await liElements[i]?.$("a");
-
-      await clickable?.click().catch((err) => {
-        errors.push(errToObj(err));
-        console.log(err);
-      });
-      await Promise.race([
-        page.waitForNavigation({ waitUntil: "networkidle0" }),
-        page.waitForNetworkIdle(),
-        new Promise((resolve) => setTimeout(resolve, 5000))
-      ]).catch((err) => {
-        errors.push(errToObj(err));
-        console.log(err);
-      });
-
-      const jobPostEl = await page.$("#jobsearch-ViewjobPaneWrapper");
-
-      const title = (
-        await jobPostEl
-          ?.$eval(
-            "div.jobsearch-JobInfoHeader-title-container",
-            (el) => el.textContent
-          )
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })
-      )?.replace(" - job post", "");
-
-      // Get the company name
-      const company =
-        (await jobPostEl
-          ?.$eval("div[data-company-name=true]", (el) => el.textContent)
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      // Get the company info
-      const companyInfo = (
-        await jobPostEl
-          ?.$eval("div.jobsearch-CompanyInfoContainer", (el) => el.textContent)
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })
-      )
-        ?.replace(company ?? "", "")
-        .split("reviews");
-
-      // Get the number of reviews
-      const reviews =
-        (companyInfo?.[0] && parseInt(companyInfo?.[0].replace(",", ""))) ||
-        undefined;
-
-      // Get the location
-      const location = companyInfo?.[1];
-
-      const salary =
-        (await jobPostEl
-          ?.$eval(
-            "#jobDetailsSection > div:nth-child(2) > div > span",
-            (el) => el.textContent
-          )
-          .catch((err) => {
-            errors.push(errToObj(err));
-          })) || undefined;
-
-      const jobType =
-        (await jobPostEl
-          ?.$$eval("#jobDetailsSection > div:nth-child(3) > div", (el) => {
-            const jobType: string[] = [];
-            for (let i = 0; i < el.length; i++) {
-              const text = el[i].textContent;
-              if (text !== "Job type" && text !== null) {
-                jobType.push(text);
-              }
-            }
-            return jobType.length > 0 ? jobType : undefined;
-          })
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      const qualifications =
-        (await jobPostEl
-          ?.$$eval(
-            "#qualificationsSection > div.jobsearch-ReqAndQualSection-item--wrapper > div > ul > li",
-            (el) => {
-              const qualifications: string[] = [];
-              for (let i = 0; i < el.length; i++) {
-                const text = el[i].textContent;
-                if (text !== null) qualifications.push(text);
-              }
-              return qualifications.length > 0 ? qualifications : undefined;
-            }
-          )
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      // Get the benefits
-      const benefits =
-        (await jobPostEl
-          ?.$$eval("#benefits > div > div > div", (el) => {
-            const benefits: string[] = [];
-
-            for (let i = 0; i < el.length; i++) {
-              const text = el[i].textContent;
-              text && benefits.push(text);
-            }
-            return benefits.length > 0 ? benefits : undefined;
-          })
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      // Get the job description
-      const jobDescription =
-        (await jobPostEl
-          ?.$eval("#jobDescriptionText", (el) => el.textContent)
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      // Get the job insights
-      const jobInsights =
-        (await jobPostEl
-          ?.$$eval(
-            "#belowFullJobDescription + div > p, #mosaic-belowFullJobDescription + div > ul > li",
-            (el) => {
-              const insights: string[] = [];
-              for (let i = 0; i < el.length; i++) {
-                const text = el[i].textContent;
-                text && insights.push(text);
-              }
-
-              const insightsFiltered = insights
-                .map((insight: string) =>
-                  insight
-                    .replace("Hiring Insights", "")
-                    .replace("Job activity", "")
-                )
-                .filter((insight: string) => insight !== "");
-              return insightsFiltered.length > 0 ? insightsFiltered : undefined;
-            }
-          )
-          .catch((err) => {
-            errors.push(errToObj(err));
-            console.log(err);
-          })) || undefined;
-
-      if (!jobSet.has(title || "" + company))
-        jobs.push({
-          title,
-          company,
-          reviews,
-          location,
-          salary,
-          jobType,
-          qualifications,
-          benefits,
-          jobDescription,
-          jobInsights
-        });
-      console.log(title || "" + company);
-      jobSet.add(title || "" + company);
-    }
-
-    const nextPageButton = await page.$(
-      "#jobsearch-JapanPage > div > div > div.jobsearch-SerpMainContent > div.jobsearch-LeftPane > nav > div > a"
-    );
-    await nextPageButton?.click().catch((err) => {
-      errors.push(errToObj(err));
-      console.log(err);
-    });
-
-    await page
-      .waitForNavigation({ waitUntil: "domcontentloaded" })
-      .catch((err) => {
-        errors.push(errToObj(err));
-        console.log("Navigation failed");
-      });
-
-    await scrapeJobs(pageCount + 1);
-  };
-
-  await scrapeJobs(1);
-  console.log("Number of jobs: ", jobs.length);
-  console.log("Error count: ", errors.length);
-  // Write file
-  await fs.writeFile("jobs.json", JSON.stringify(jobs, null, 2));
-  await fs.writeFile("errors.json", JSON.stringify(errors, null, 2));
-
-  // Close the browser
-  await browser.close();
-})();
+await browser.close();
