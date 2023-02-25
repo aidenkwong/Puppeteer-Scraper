@@ -18,5 +18,5 @@ module.exports = {
     semi: ["error", "always"],
     "@typescript-eslint/explicit-function-return-type": "error"
   },
-  ignorePatterns: [".eslintrc.cjs"]
+  ignorePatterns: [".eslintrc.cjs", "node_modules", "dist"]
 };

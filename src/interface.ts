@@ -18,3 +18,11 @@ export interface Job extends Record<string, string | string[]> {
   jobDescription: string;
   jobActivity: string[];
 }
+
+export interface JobError {
+  job: string;
+  property: string;
+  name: string;
+  message: string;
+  stack?: string | undefined;
+}
