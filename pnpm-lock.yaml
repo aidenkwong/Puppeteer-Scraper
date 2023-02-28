@@ -3,6 +3,7 @@ lockfileVersion: 5.4
 specifiers:
   '@typescript-eslint/eslint-plugin': ^5.53.0
   '@typescript-eslint/parser': ^5.53.0
+  chalk: ^5.2.0
   dotenv: ^16.0.3
   eslint: ^8.34.0
   eslint-config-standard-with-typescript: ^34.0.0
@@ -17,6 +18,7 @@ specifiers:
   typescript: ^4.9.5
 
 dependencies:
+  chalk: 5.2.0
   dotenv: 16.0.3
   mysql2: 3.1.2
   puppeteer: 19.7.2_typescript@4.9.5
@@ -442,6 +444,11 @@ packages:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
     dev: true
+
+  /chalk/5.2.0:
+    resolution: {integrity: sha512-ree3Gqw/nazQAPuJJEy+avdl7QfZMcUvmHIKgEZkGL+xOBzRvup5Hxo6LHuMceSxOabuJLJm5Yp/92R9eMmMvA==}
+    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
+    dev: false
 
   /chownr/1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}

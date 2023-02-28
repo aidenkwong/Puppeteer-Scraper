@@ -6,12 +6,15 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node dist/index.js"
+    "start": "tsc && node dist/index.js",
+    "start:yt:ts": "ts-node-esm src/youtube/transcript.ts",
+    "start:job:indeed:gj": "tsc && node dist/job/indeed/get-jobs.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^5.2.0",
     "dotenv": "^16.0.3",
     "mysql2": "^3.1.2",
     "puppeteer": "^19.7.2"
