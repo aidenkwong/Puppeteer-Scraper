@@ -1,15 +1,13 @@
 import getPage from "../puppeteer/getPage.js";
 import fs from "fs/promises";
-import { sleep } from "../util.js";
 
 const url =
   "https://www.ted.com/talks/james_lyne_everyday_cybercrime_and_what_you_can_do_about_it?language=en";
 
 // Somehow not working, need to investigate
 const getTranscript = async (url: string): Promise<string | null> => {
-  const { page, browser } = await getPage(url);
+  const { page, browser } = await getPage({ url });
 
-  await sleep(99999999);
   await page.waitForSelector("button.bg-white.text-black");
 
   const transcriptBtn = await page.$("button.bg-white.text-black");

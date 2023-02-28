@@ -1,11 +1,11 @@
 import getPage from "../puppeteer/getPage.js";
 import fs from "fs/promises";
 
-const url = "https://www.youtube.com/watch?v=knLDY7hRm5I";
+const url = "https://www.youtube.com/watch?v=ZoObi17pv3k";
 const videoId = url.split("=")[1];
 
 const getTranscript = async (url: string): Promise<string | null> => {
-  const { page, browser } = await getPage(url);
+  const { page, browser } = await getPage({ url });
 
   const threeDotsBtn = await page.$(
     "#button-shape > button > yt-touch-feedback-shape > div > div.yt-spec-touch-feedback-shape__fill"

@@ -1,9 +1,18 @@
 import puppeteer from "puppeteer";
 
-const getPage = async (
-  url: string
-): Promise<{ page: puppeteer.Page; browser: puppeteer.Browser }> => {
-  const browser = await puppeteer.launch();
+type GetPageOptions = {
+  url: string;
+  headless?: boolean;
+};
+
+const getPage = async ({
+  url,
+  headless = true
+}: GetPageOptions): Promise<{
+  page: puppeteer.Page;
+  browser: puppeteer.Browser;
+}> => {
+  const browser = await puppeteer.launch({ headless });
   const page = await browser.newPage();
   await page.setViewport({
     width: 1400,

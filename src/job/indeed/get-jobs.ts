@@ -199,7 +199,31 @@ async function scrape(
       }
     }
 
-    await jobCheck(job);
+    const checkResult = await jobCheck(job);
+    const fileName = `./output/jobs/indeed/selected/${new Date()
+      .toISOString()
+      .slice(0, 10)}-jobs.txt`;
+
+    if (
+      checkResult &&
+      checkResult.yoes.length > 0 &&
+      checkResult.matchedKw.length > 0
+    ) {
+      const { yoes, matchedKw } = checkResult;
+      console.log(`Selected job: ${chalk.green(jk)}`);
+
+      await writeFile(
+        fileName,
+        `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
+      );
+    } else if (checkResult && checkResult.yoes.length === 0) {
+      console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
+
+      await writeFile(
+        fileName,
+        `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
+      );
+    }
 
     job.jobDetails = job.jobDetails
       .replace("Job details", "")
@@ -211,37 +235,58 @@ async function scrape(
   return jobs;
 }
 
-async function jobCheck(job: Job): Promise<void> {
-  const jk = job.jk;
+async function jobCheck(
+  job: Job
+): Promise<{ yoes: string[]; matchedKw: string[] } | void> {
   const jobDescription = job.jobDescription.toLowerCase();
   const jobQualifications = job.qualifications.toLowerCase();
   const jobTitle = job.title.toLowerCase();
-  const programmingLanguages = ["javascript", "python", "typescript"];
-  const notInTitle = ["senior", "lead", "manager", "director", "architect"];
+
+  const inJobDescription = ["javascript", "python", "typescript"];
+  const notInJobDescription: string[] = [];
+
   const inTitle = ["software", "developer", "engineer", "programmer"];
+  const notInTitle = [
+    "senior",
+    "lead",
+    "manager",
+    "director",
+    "architect",
+    "sr.",
+    "sr",
+    "principal",
+    "intern",
+    ".net",
+    "ios",
+    "android"
+  ];
 
   // Gettting the right title
   let rightTitle = false;
-  // Must include one of the words in the inTitle array
   for (const inTitleWord of inTitle) {
-    if (jobTitle.toLowerCase().includes(inTitleWord)) {
+    if (jobTitle.includes(inTitleWord)) {
       rightTitle = true;
       break;
     }
   }
-  // Must not include any of the words in the notInTitle array
   for (const notInTitleWord of notInTitle) {
-    if (jobTitle.toLowerCase().includes(notInTitleWord)) {
+    if (jobTitle.includes(notInTitleWord)) {
       rightTitle = false;
       break;
     }
   }
+  if (rightTitle === false) return;
 
-  // Find if there is match for programming language
-  const matchProgrammingLanguage = [];
-  for (const programmingLanguage of programmingLanguages) {
-    if (jobDescription.includes(programmingLanguage)) {
-      matchProgrammingLanguage.push(programmingLanguage);
+  // Getting the right keywords in the job description
+  const matchedKw = [];
+  for (const kw of inJobDescription) {
+    if (jobDescription.includes(kw)) {
+      matchedKw.push(kw);
+    }
+  }
+  for (const kw in notInJobDescription) {
+    if (jobDescription.includes(kw)) {
+      return;
     }
   }
 
@@ -251,7 +296,7 @@ async function jobCheck(job: Job): Promise<void> {
     jobDescription
       .match(yoePattern)
       ?.concat(jobQualifications.match(yoePattern) || []) || [];
-  let yearsOfExperience: string[] = [];
+  let yoes: string[] = [];
   if (yoeMatches?.length > 0) {
     const sentences = jobDescription
       .split("\n")
@@ -271,38 +316,16 @@ async function jobCheck(job: Job): Promise<void> {
       return false;
     });
 
-    yearsOfExperience = matchingSentences.map((sentence) => sentence.trim());
+    yoes = matchingSentences.map((sentence) => sentence.trim());
   }
-  const fileName = `./output/jobs/indeed/selected/${new Date()
-    .toISOString()
-    .slice(0, 10)}-jobs.txt`;
-  if (rightTitle) {
-    if (yearsOfExperience.length > 0 && matchProgrammingLanguage.length > 0) {
-      console.log(`Selected job: ${chalk.green(jk)}`);
-      try {
-        await fs.appendFile(
-          fileName,
-          `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yearsOfExperience} [Programming Language]${matchProgrammingLanguage}\n`
-        );
-      } catch (error) {
-        await fs.writeFile(
-          fileName,
-          `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yearsOfExperience} [Programming Language:]${matchProgrammingLanguage}\n`
-        );
-      }
-    } else if (yoeMatches.length === 0) {
-      console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
-      try {
-        await fs.appendFile(
-          fileName,
-          `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
-        );
-      } catch (error) {
-        await fs.writeFile(
-          fileName,
-          `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
-        );
-      }
-    }
+
+  return { yoes, matchedKw };
+}
+
+async function writeFile(fileName: string, text: string): Promise<void> {
+  try {
+    await fs.appendFile(fileName, text);
+  } catch (error) {
+    await fs.writeFile(fileName, text);
   }
 }
