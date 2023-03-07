@@ -14,7 +14,7 @@ type GetJobOptions = {
 getJobs({
   positions: ["software developer"],
   numOfPage: 3,
-  numOfIteration: 3
+  numOfIteration: 10
 });
 
 function getPositionSlug(position: string): string {
@@ -37,12 +37,12 @@ async function getJobs({
         arr.map(async (i) => {
           const page = i + numOfPage * 10 * j;
           const jobs = await scrape(browser, position, page);
-          await fs.writeFile(
-            `./output/jobs/indeed/raw/${new Date().toISOString()}-${getPositionSlug(
-              position
-            )}-${page}.json`,
-            JSON.stringify(jobs, null, 2)
-          );
+          // await fs.writeFile(
+          //   `./output/jobs/indeed/raw/${new Date().toISOString()}-${getPositionSlug(
+          //     position
+          //   )}-${page}.json`,
+          //   JSON.stringify(jobs, null, 2)
+          // );
         })
       );
     }
@@ -204,19 +204,21 @@ async function scrape(
       .toISOString()
       .slice(0, 10)}-jobs.txt`;
 
-    if (
-      checkResult &&
-      checkResult.yoes.length > 0 &&
-      checkResult.matchedKw.length > 0
-    ) {
+    if (checkResult && checkResult.matchedKw.length > 0) {
       const { yoes, matchedKw } = checkResult;
       console.log(`Selected job: ${chalk.green(jk)}`);
-
-      await writeFile(
-        fileName,
-        `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
-      );
-    } else if (checkResult && checkResult.yoes.length === 0) {
+      if (yoes.length > 0) {
+        await writeFile(
+          fileName,
+          `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
+        );
+      } else {
+        await writeFile(
+          fileName,
+          `https://ca.indeed.com/viewjob?jk=${jk} [Matched Keywords:]${matchedKw}\n`
+        );
+      }
+    } else if (checkResult && checkResult.yoeMatches.length === 0) {
       console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
 
       await writeFile(
@@ -235,15 +237,14 @@ async function scrape(
   return jobs;
 }
 
-async function jobCheck(
-  job: Job
-): Promise<{ yoes: string[]; matchedKw: string[] } | void> {
+async function jobCheck(job: Job): Promise<{
+  yoeMatches: string[];
+  yoes: string[];
+  matchedKw: string[];
+} | void> {
   const jobDescription = job.jobDescription.toLowerCase();
   const jobQualifications = job.qualifications.toLowerCase();
   const jobTitle = job.title.toLowerCase();
-
-  const inJobDescription = ["javascript", "python", "typescript"];
-  const notInJobDescription: string[] = [];
 
   const inTitle = ["software", "developer", "engineer", "programmer"];
   const notInTitle = [
@@ -258,8 +259,16 @@ async function jobCheck(
     "intern",
     ".net",
     "ios",
-    "android"
+    "android",
+    "embedded",
+    "c++",
+    "security",
+    "cloud",
+    "xcode"
   ];
+
+  const inJobDescription = ["javascript", "python", "typescript"];
+  const notInJobDescription: string[] = [".net", "c++"];
 
   // Gettting the right title
   let rightTitle = false;
@@ -291,7 +300,7 @@ async function jobCheck(
   }
 
   // Find the years of experience in the job description
-  const yoePattern = /\b\d+\+?( |)(years|yrs|yr)\b/gi;
+  const yoePattern = /(\d+|\w+)\s?\+?\s?(year|yr)s?/gi;
   const yoeMatches =
     jobDescription
       .match(yoePattern)
@@ -308,7 +317,7 @@ async function jobCheck(
       for (const match of yoeMatches) {
         if (sentence.includes(match)) {
           const yoe = parseInt(match?.match(/\d+/)?.[0] || "", 10);
-          if (yoe <= 2) {
+          if (yoe <= 1) {
             return true;
           }
         }
@@ -319,7 +328,7 @@ async function jobCheck(
     yoes = matchingSentences.map((sentence) => sentence.trim());
   }
 
-  return { yoes, matchedKw };
+  return { yoeMatches, yoes, matchedKw };
 }
 
 async function writeFile(fileName: string, text: string): Promise<void> {
