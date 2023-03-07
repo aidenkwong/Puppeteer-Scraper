@@ -207,17 +207,11 @@ async function scrape(
     if (checkResult && checkResult.matchedKw.length > 0) {
       const { yoes, matchedKw } = checkResult;
       console.log(`Selected job: ${chalk.green(jk)}`);
-      if (yoes.length > 0) {
-        await writeFile(
-          fileName,
-          `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
-        );
-      } else {
-        await writeFile(
-          fileName,
-          `https://ca.indeed.com/viewjob?jk=${jk} [Matched Keywords:]${matchedKw}\n`
-        );
-      }
+
+      await writeFile(
+        fileName,
+        `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
+      );
     } else if (checkResult && checkResult.yoeMatches.length === 0) {
       console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
 
@@ -264,8 +258,11 @@ async function jobCheck(job: Job): Promise<{
     "c++",
     "security",
     "cloud",
-    "xcode"
-  ];
+    "xcode",
+    "php",
+    "devops",
+    "blueprism"
+  ].map((kw) => kw.toLowerCase());
 
   const inJobDescription = ["javascript", "python", "typescript"];
   const notInJobDescription: string[] = [".net", "c++"];
