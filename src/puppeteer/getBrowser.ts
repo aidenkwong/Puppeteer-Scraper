@@ -7,7 +7,9 @@ type GetBrowserOptions = {
 const getBrowser = async ({
   headless = true
 }: GetBrowserOptions): Promise<puppeteer.Browser> => {
-  const browser = await puppeteer.launch({ headless });
+  const browser = await puppeteer.launch({
+    headless
+  });
   const page = await browser.newPage();
   await page.setViewport({
     width: 1400,

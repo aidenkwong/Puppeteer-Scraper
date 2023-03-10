@@ -11,10 +11,17 @@ type GetJobOptions = {
   numOfIteration?: number;
 };
 
+const jobsAdded = new Set();
+
 getJobs({
-  positions: ["software developer"],
+  positions: [
+    "software developer",
+    "junior developer",
+    "nodejs developer",
+    "software engineer"
+  ],
   numOfPage: 3,
-  numOfIteration: 10
+  numOfIteration: 4
 });
 
 function getPositionSlug(position: string): string {
@@ -27,7 +34,7 @@ async function getJobs({
   numOfIteration = 1
 }: GetJobOptions): Promise<void> {
   // Indeed page is 0 indexed, with 2nd page being 10, 3rd page being 20, so on and so forth
-  const browser = await getBrowser({});
+
   const arr = new Array(numOfPage).fill(0).map((_, i) => i * 10);
   const arr2 = new Array(numOfIteration).fill(0).map((_, i) => i);
 
@@ -36,7 +43,7 @@ async function getJobs({
       await Promise.all(
         arr.map(async (i) => {
           const page = i + numOfPage * 10 * j;
-          const jobs = await scrape(browser, position, page);
+          const jobs = await scrape(position, page);
           // await fs.writeFile(
           //   `./output/jobs/indeed/raw/${new Date().toISOString()}-${getPositionSlug(
           //     position
@@ -47,20 +54,15 @@ async function getJobs({
       );
     }
   }
-  await browser.close();
 }
 
-async function scrape(
-  browser: puppeteer.Browser,
-  position: string,
-  indeedPage: number
-): Promise<Job[]> {
+async function scrape(position: string, indeedPage: number): Promise<Job[]> {
   console.log(
     `Getting jobs for ${chalk.blue(position)} on page ${chalk.blue(
       indeedPage / 10 + 1
     )}...`
   );
-
+  const browser = await getBrowser({});
   const positionSlug = getPositionSlug(position);
 
   const page = await browser.newPage();
@@ -204,7 +206,7 @@ async function scrape(
       .toISOString()
       .slice(0, 10)}-jobs.txt`;
 
-    if (checkResult && checkResult.matchedKw.length > 0) {
+    if (!jobsAdded.has(jk) && checkResult && checkResult.matchedKw.length > 0) {
       const { yoes, matchedKw } = checkResult;
       console.log(`Selected job: ${chalk.green(jk)}`);
 
@@ -219,6 +221,7 @@ async function scrape(
         fileName,
         `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
       );
+      jobsAdded.add(jk);
     }
 
     job.jobDetails = job.jobDetails
@@ -228,6 +231,7 @@ async function scrape(
     jobs.push(job);
   }
 
+  await browser.close();
   return jobs;
 }
 
@@ -261,7 +265,8 @@ async function jobCheck(job: Job): Promise<{
     "xcode",
     "php",
     "devops",
-    "blueprism"
+    "blueprism",
+    "Intermediate"
   ].map((kw) => kw.toLowerCase());
 
   const inJobDescription = ["javascript", "python", "typescript"];

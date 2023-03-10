@@ -103,6 +103,6 @@ dist
 # TernJS port file
 .tern-port
 
-output/**/*
-!output/jobs/indeed/raw
-!output/jobs/indeed/selected
+output/*
+!output/jobs/indeed/raw/
+!output/jobs/indeed/selected/
