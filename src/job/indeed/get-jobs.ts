@@ -11,7 +11,7 @@ type GetJobOptions = {
   numOfIteration?: number;
 };
 
-const jobsAdded = new Set();
+const jobsAdded = new Set<string>();
 
 getJobs({
   positions: [
@@ -206,21 +206,23 @@ async function scrape(position: string, indeedPage: number): Promise<Job[]> {
       .toISOString()
       .slice(0, 10)}-jobs.txt`;
 
-    if (!jobsAdded.has(jk) && checkResult && checkResult.matchedKw.length > 0) {
-      const { yoes, matchedKw } = checkResult;
-      console.log(`Selected job: ${chalk.green(jk)}`);
+    if (!jobsAdded.has(jk)) {
+      if (checkResult && checkResult.matchedKw.length > 0) {
+        const { yoes, matchedKw } = checkResult;
+        console.log(`Selected job: ${chalk.green(jk)}`);
 
-      await writeFile(
-        fileName,
-        `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
-      );
-    } else if (checkResult && checkResult.yoeMatches.length === 0) {
-      console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
+        await writeFile(
+          fileName,
+          `https://ca.indeed.com/viewjob?jk=${jk} [yoe]${yoes} [Matched Keywords:]${matchedKw}\n`
+        );
+      } else if (checkResult && checkResult.yoeMatches.length === 0) {
+        console.log(`Selected job: ${chalk.green(jk)} (no yoe)`);
 
-      await writeFile(
-        fileName,
-        `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
-      );
+        await writeFile(
+          fileName,
+          `No yoe: https://ca.indeed.com/viewjob?jk=${jk}\n`
+        );
+      }
       jobsAdded.add(jk);
     }
 
@@ -266,8 +268,9 @@ async function jobCheck(job: Job): Promise<{
     "php",
     "devops",
     "blueprism",
-    "Intermediate"
-  ].map((kw) => kw.toLowerCase());
+    "Intermediate",
+    "java"
+  ].map((kw) => " " + kw.toLowerCase().trim() + " ");
 
   const inJobDescription = ["javascript", "python", "typescript"];
   const notInJobDescription: string[] = [".net", "c++"];
