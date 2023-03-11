@@ -270,7 +270,7 @@ async function jobCheck(job: Job): Promise<{
     "blueprism",
     "Intermediate",
     "java"
-  ].map((kw) => " " + kw.toLowerCase().trim() + " ");
+  ].map((kw) => kw.toLowerCase().trim() + " ");
 
   const inJobDescription = ["javascript", "python", "typescript"];
   const notInJobDescription: string[] = [".net", "c++"];
@@ -322,7 +322,7 @@ async function jobCheck(job: Job): Promise<{
       for (const match of yoeMatches) {
         if (sentence.includes(match)) {
           const yoe = parseInt(match?.match(/\d+/)?.[0] || "", 10);
-          if (yoe <= 1) {
+          if (yoe <= 2) {
             return true;
           }
         }
