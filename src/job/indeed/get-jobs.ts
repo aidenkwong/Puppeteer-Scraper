@@ -44,12 +44,12 @@ async function getJobs({
         arr.map(async (i) => {
           const page = i + numOfPage * 10 * j;
           const jobs = await scrape(position, page);
-          // await fs.writeFile(
-          //   `./output/jobs/indeed/raw/${new Date().toISOString()}-${getPositionSlug(
-          //     position
-          //   )}-${page}.json`,
-          //   JSON.stringify(jobs, null, 2)
-          // );
+          await fs.writeFile(
+            `./output/jobs/indeed/raw/${new Date().toISOString()}-${getPositionSlug(
+              position
+            )}-${page}.json`,
+            JSON.stringify(jobs, null, 2)
+          );
         })
       );
     }
@@ -62,7 +62,7 @@ async function scrape(position: string, indeedPage: number): Promise<Job[]> {
       indeedPage / 10 + 1
     )}...`
   );
-  const browser = await getBrowser({});
+  const browser = await getBrowser({ headless: false });
   const positionSlug = getPositionSlug(position);
 
   const page = await browser.newPage();
@@ -74,12 +74,12 @@ async function scrape(position: string, indeedPage: number): Promise<Job[]> {
   });
 
   // User agent and http header is required, otherwise there will be a 403 error
-  await page.setUserAgent(
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
-  );
-  await page.setExtraHTTPHeaders({
-    "Accept-Language": "en-US,en;q=0.9"
-  });
+  // await page.setUserAgent(
+  //   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36"
+  // );
+  // await page.setExtraHTTPHeaders({
+  //   "Accept-Language": "en-US,en;q=0.9"
+  // });
 
   const url = `https://ca.indeed.com/jobs?q=${positionSlug}&start=${indeedPage}&sort=date`;
 
