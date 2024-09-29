@@ -17,7 +17,7 @@ const jobProperties: JobProperty[] = [
     name: "Location",
     key: "location",
     number: "single",
-    selector: "div.jobsearch-JobInfoHeader-subtitle > div:nth-child(2)"
+    selector: "div[data-testid='job-location']"
   },
   {
     name: "Job Details",
